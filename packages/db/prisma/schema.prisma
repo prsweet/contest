@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRoles {
+  CANDIDATE
+  ADMIN
+}
+
+enum ContestStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+  LIVE
+  FINISHED
+}
+
+model Batch {
+  id       String    @id @default(cuid())
+  name     String
+  users    User[]    @relation("UserBatches")
+  contests Contest[] @relation("ContestBatches")
+}
+
+model User {
+  id       String    @id @default(cuid())
+  name     String
+  email    String    @unique
+  password String
+  role     UserRoles @default(CANDIDATE)
+  batches  Batch[]   @relation("UserBatches")
+  contests Contest[]
+}
+
+model Contest {
+  id        String        @id @default(cuid())
+  title     String
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  batches   Batch[]       @relation("ContestBatches")
+  isOpenAll Boolean       @default(true)
+  startTime DateTime      @default(now())
+  duration  Int
+  status    ContestStatus
+  questions Question[]
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  score       Int
+  options     Option[]
+  contestId   String
+  contest     Contest  @relation(fields: [contestId], references: [id])
+}
+
+model Option {
+  id         String   @id @default(cuid())
+  title      String
+  isCorrect  Boolean
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+}
