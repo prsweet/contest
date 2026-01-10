@@ -1,39 +1,94 @@
-import express,{type Request,type Response} from 'express'
+import express, { type Request, type Response } from 'express'
 import bcrypt from 'bcrypt'
-const router=express.Router()
-import {prisma} from '@repo/db'
-
-router.post('/signup',async(req:Request,res:Response)=>{
+const router = express.Router()
+import { prisma } from '@repo/db'
+import jwt from 'jsonwebtoken'
+export const signupUser = async (req: Request, res: Response) => {
     try {
-        const {name,email,password,role}=req.body;
+        const { name, email, password, role } = req.body;
         const isRegistered = await prisma.user.findFirst({
-            where:{
+            where: {
                 email
             }
         })
-        if(isRegistered){
+        if (isRegistered) {
             res.status(409).json({
-                success:false,
-                error:"Email already exists"
+                success: false,
+                error: "Email already exists"
+            })
+            return
+        }
+        const hashedPassword = bcrypt.hashSync(password,Number(process.env.SALT!));
+        const user = await prisma.user.create({
+            data: {
+                name,
+                email,
+                password: hashedPassword,
+                role
+            },
+            select:{
+                name:true,
+                email:true,
+                role:true
+            }
+        })
+
+        res.status(201).json({
+            success: true,
+            data: {
+                name:user.name,
+                email:user.email,
+                role:user.role
+            }
+        })
+        return
+    } catch (error) {
+        console.log('error in creating user',error)
+        res.status(500).json({
+            success: false,
+            error: error
+        })
+        return
+
+    }
+}
+
+export const loginUser = async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
+        let user = await prisma.user.findFirst({
+            where: {
+                email
+            }
+        })
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                error: 'User with this email does not exist'
             })
         }
-        const hashedPassowrd=bcrypt.hashSync(password,process.env.SALT!);
-      const user=await prisma.user.create({
-        data:{
-            name,
-            email,
-            password
+        const isValid = bcrypt.compareSync(password, user!.password)
+        if (!isValid) {
+            res.status(401).json({
+                success: false,
+                error: 'Wrong credentials'
+            })
         }
-      })
-        
-        res.status(201).json({
-            sucess:true,
-            data:user
+        const token = jwt.sign({ userId: user!.id }, process.env.SECRET!, { expiresIn: '1h' })
+        res.status(200).json({
+            success: true,
+            data: token
         })
     } catch (error) {
+        console.log('error in login user', error)
         res.status(500).json({
-            sucess:false,
-            error:error
+            success: false,
+            error
         })
+        return;
     }
-})
+}
+
+
+//409 email already exist
+//401 wrong credentials

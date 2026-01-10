@@ -1,8 +1,8 @@
 import express,{type Request,type Response} from "express"
 const app = express()
-import bcrypt from 'bcrypt'
 const PORT = 3000
-const SALT='fbsdjfbsdjbf9w7'
+import { router as AuthRouter } from "./routes/AuthRouter.js"
+app.use(express.json())
 // type Batch = {
 //     id: string,
 //     name: string,
@@ -38,6 +38,8 @@ const SALT='fbsdjfbsdjbf9w7'
 //     questions: Question[]
 // }
 // const users:User[]=[]
+
+app.use('/auth',AuthRouter)
 
 app.listen(PORT, () => {
     console.log(`server started at port ${PORT}`)
