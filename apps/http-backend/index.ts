@@ -2,6 +2,7 @@ import express,{type Request,type Response} from "express"
 const app = express()
 const PORT = 3000
 import { router as AuthRouter } from "./routes/AuthRouter.js"
+import { router as BatchRouter } from "./routes/BatchController.js"
 app.use(express.json())
 // type Batch = {
 //     id: string,
@@ -40,6 +41,7 @@ app.use(express.json())
 // const users:User[]=[]
 
 app.use('/auth',AuthRouter)
+app.use('/batch',BatchRouter)
 
 app.listen(PORT, () => {
     console.log(`server started at port ${PORT}`)

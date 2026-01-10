@@ -5,7 +5,7 @@ import { prisma } from '@repo/db'
 import jwt from 'jsonwebtoken'
 export const signupUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
         const isRegistered = await prisma.user.findFirst({
             where: {
                 email
@@ -24,12 +24,10 @@ export const signupUser = async (req: Request, res: Response) => {
                 name,
                 email,
                 password: hashedPassword,
-                role
             },
             select:{
                 name:true,
                 email:true,
-                role:true
             }
         })
 
@@ -38,8 +36,8 @@ export const signupUser = async (req: Request, res: Response) => {
             data: {
                 name:user.name,
                 email:user.email,
-                role:user.role
-            }
+            },
+            message:'User created Successfully'
         })
         return
     } catch (error) {
@@ -77,7 +75,8 @@ export const loginUser = async (req: Request, res: Response) => {
         const token = jwt.sign({ userId: user!.id }, process.env.SECRET!, { expiresIn: '1h' })
         res.status(200).json({
             success: true,
-            data: token
+            data: token,
+            message:'User logged in successfully'
         })
     } catch (error) {
         console.log('error in login user', error)
@@ -89,6 +88,8 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 }
 
-
+export const updateRole=(req:Request,res:Response)=>{
+    
+}
 //409 email already exist
 //401 wrong credentials
