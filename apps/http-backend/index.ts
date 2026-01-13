@@ -6,6 +6,7 @@ import { router as BatchRouter } from "./routes/BatchController.js"
 import { AdminMiddleware, authMiddleware } from "./middleware/AuthMiddleware.js"
 import {router as ContestRouter} from './routes/ContestController.js'
 import {router as QuestionRouter} from './routes/QuestionController.js'
+import { startContestLifeCycle } from "./jobs/ContestLifeCycle.js"
 app.use(express.json())
 
 
@@ -15,6 +16,7 @@ app.use(authMiddleware)
 app.use('/batch',AdminMiddleware,BatchRouter)
 app.use('/contest',ContestRouter)
 app.use('/question',QuestionRouter)
+startContestLifeCycle()
 app.listen(PORT, () => {
     console.log(`server started at port ${PORT}`)
 })
