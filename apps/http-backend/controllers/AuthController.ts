@@ -5,7 +5,7 @@ import { prisma } from '@repo/db'
 import jwt from 'jsonwebtoken'
 export const signupUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password ,role} = req.body;
+        let { name, email, password, role } = req.body;
         const isRegistered = await prisma.user.findFirst({
             where: {
                 email
@@ -18,31 +18,29 @@ export const signupUser = async (req: Request, res: Response) => {
             })
             return
         }
-        const hashedPassword = bcrypt.hashSync(password,Number(process.env.SALT!));
+        role = role ? role : "candidate"
+        const hashedPassword = bcrypt.hashSync(password, Number(process.env.SALT!));
         const user = await prisma.user.create({
             data: {
                 name,
                 email,
                 role,
                 password: hashedPassword,
-            },
-            select:{
-                name:true,
-                email:true,
             }
         })
 
-        res.status(201).json({
+        const token = jwt.sign({ userId: user!.id }, process.env.SECRET!, { expiresIn: '1d' })
+        res.status(200).json({
             success: true,
             data: {
-                name:user.name,
-                email:user.email,
+                token,
+                role
             },
-            message:'User created Successfully'
+            message: 'User created successfully'
         })
         return
     } catch (error) {
-        console.log('error in creating user',error)
+        console.log('error in creating user', error)
         res.status(500).json({
             success: false,
             error: error
@@ -76,8 +74,11 @@ export const loginUser = async (req: Request, res: Response) => {
         const token = jwt.sign({ userId: user!.id }, process.env.SECRET!, { expiresIn: '1d' })
         res.status(200).json({
             success: true,
-            data: token,
-            message:'User logged in successfully'
+            data: {
+                token,
+                role: user!.role
+            },
+            message: 'User logged in successfully'
         })
     } catch (error) {
         console.log('error in login user', error)
@@ -89,8 +90,8 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 }
 
-export const updateRole=(req:Request,res:Response)=>{
-    
+export const updateRole = (req: Request, res: Response) => {
+
 }
 //409 email already exist
 //401 wrong credentials

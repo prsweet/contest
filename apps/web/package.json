@@ -12,9 +12,13 @@
   },
   "dependencies": {
     "@repo/ui": "*",
+    "axios": "^1.13.2",
     "next": "16.1.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-toastify": "^11.0.5",
+    "toast": "^0.5.4",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
