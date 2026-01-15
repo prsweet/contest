@@ -16,26 +16,20 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
+import { Playfair_Display } from 'next/font/google';
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
+
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { isAuthenticated } = useAuthStore((state) => state)
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      console.log('not authenticated', isAuthenticated)
-      router.replace('/signin')
-    }
-  }, [isAuthenticated, pathname, router])
 
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable}`}>
         {children}
         <ToastContainer />
       </body>
