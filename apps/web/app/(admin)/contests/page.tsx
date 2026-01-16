@@ -5,7 +5,7 @@ import { useBatchStore, useContestStore } from "../../store"
 import { createContestAPI, deleteContestAPI, updateContestAPI } from "../../api"
 import { toast, ToastContainer } from "react-toastify"
 import Navbar from "../../components/layout/navbar"
-import { Plus, Trash2, Edit2, Calendar, Clock, CheckCircle2, XCircle, Search, Trophy, Shield, Zap, Target, Check } from "lucide-react"
+import { Plus, Trash2, Edit2, Calendar, Clock, CheckCircle2, XCircle, Search, Trophy, Shield, Zap, Target, Check, Loader } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 
@@ -31,8 +31,9 @@ const Modal = ({ children, onClose, title }: { children: React.ReactNode, onClos
 )
 
 export default function Contests() {
-    const { contests, getContests, getContestById, updateContest, deleteContest } = useContestStore()
+    const { contests, getContests, getContestById, updateContest, deleteContest, changeContestStatus } = useContestStore()
     const { batches, getBatches } = useBatchStore()
+    const [isLoading, setIsLoading] = useState(true)
     const [isCreateContestModalOpen, setIsCreateContestModalOpen] = useState(false)
     const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([])
     const [isOpenAll, setIsOpenAll] = useState(false)
@@ -108,11 +109,15 @@ export default function Contests() {
             const formData = new FormData(e.currentTarget);
             const dataObject = Object.fromEntries(formData.entries());
             const title = dataObject.title;
+            const status = dataObject.status;
             const startTime = new Date(dataObject.startTime as string).toISOString();
 
             const batchIds = selectedBatchIds
-            const res = await updateContest(contest.id, title as string, !!isOpenAll, startTime as string, batchIds);
-            toast.success(res.message);
+            await updateContest(contest.id, title as string, !!isOpenAll, startTime as string, batchIds);
+            if (status && status !== contest.status) {
+                await changeContestStatus(contest.id, status as string)
+            }
+            toast.success('Contest updated successfully');
             setIsUpdateContestModalOpen(false);
             getContests()
         } catch (error: any) {
@@ -120,10 +125,29 @@ export default function Contests() {
             toast.error(error.message || 'Failed to update contest');
         }
     }
+    const handleStatusChange = async (contestId: string, status: string) => {
+        try {
+            await changeContestStatus(contestId, status)
+            toast.success(`Status updated to ${status}`)
+        } catch (error: any) {
+            console.error(error)
+            toast.error(error.message || "Failed to update status")
+        }
+    }
 
     useEffect(() => {
-        getContests()
-        getBatches()
+        const fetchData = async () => {
+            try {
+                setIsLoading(true)
+                await Promise.all([getContests(), getBatches()])
+            } catch (error) {
+                console.error("Failed to fetch data", error)
+                toast.error("Failed to load contests")
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        fetchData()
     }, [])
 
     const filteredContests = contests.filter(c =>
@@ -142,130 +166,147 @@ export default function Contests() {
             <Navbar />
 
             <main className="container mx-auto px-4 pt-24 pb-12 relative z-10">
-
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full border border-white/10 bg-white/5 text-slate-400 text-xs font-mono uppercase tracking-widest">
-                            <Shield size={12} className="text-brand-red" /> Admin Console
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-bold font-serif text-white mb-2">
-                            Battle <span className="text-brand-red">Management</span>
-                        </h1>
-                        <p className="text-slate-400 max-w-xl">
-                            Orchestrate code battles, manage schedules, and control access protocols.
-                        </p>
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-40">
+                        <Loader className="animate-spin text-brand-red mb-4" size={48} />
+                        <p className="text-slate-500 font-mono animate-pulse">Initializing Protocol...</p>
                     </div>
+                ) : (
+                    <>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+                            <div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full border border-white/10 bg-white/5 text-slate-400 text-xs font-mono uppercase tracking-widest">
+                                    <Shield size={12} className="text-brand-red" /> Admin Console
+                                </div>
+                                <h1 className="text-4xl md:text-5xl font-bold font-serif text-white mb-2">
+                                    Battle <span className="text-brand-red">Management</span>
+                                </h1>
+                                <p className="text-slate-400 max-w-xl">
+                                    Orchestrate code battles, manage schedules, and control access protocols.
+                                </p>
+                            </div>
 
-                    <button
-                        onClick={() => {
-                            setContest({});
-                            setSelectedBatchIds([]);
-                            setIsOpenAll(false);
-                            setIsCreateContestModalOpen(true)
-                        }}
-                        className="group flex items-center gap-2 px-6 py-3 bg-brand-red hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-brand-red/20 transition-all border border-red-500/20"
-                    >
-                        <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-                        Init New Battle
-                    </button>
-                </div>
-
-                <div className="flex flex-col md:flex-row gap-4 mb-8">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search battles..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#050505] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-brand-red/50 focus:ring-1 focus:ring-brand-red/50 transition-all placeholder:text-slate-600"
-                        />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AnimatePresence>
-                        {filteredContests.map((contest, index) => (
-                            <motion.div
-                                key={contest.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ delay: index * 0.05 }}
-                                onClick={() => router.push(`/contests/${contest.id}`)}
-                                className="group bg-[#050505]/80 backdrop-blur-md border border-white/10 hover:border-brand-red/30 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-red/5 relative overflow-hidden"
+                            <button
+                                onClick={() => {
+                                    setContest({});
+                                    setSelectedBatchIds([]);
+                                    setIsOpenAll(false);
+                                    setIsCreateContestModalOpen(true)
+                                }}
+                                className="group flex items-center gap-2 px-6 py-3 bg-brand-red hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-brand-red/20 transition-all border border-red-500/20"
                             >
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-red/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-brand-red/10 transition-all" />
+                                <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                                Init New Battle
+                            </button>
+                        </div>
 
-                                <div className="flex justify-between items-start mb-6 relative z-10">
-                                    <div className="w-12 h-12 rounded-xl bg-brand-red/10 border border-brand-red/20 flex items-center justify-center text-brand-red group-hover:scale-110 transition-transform duration-500">
-                                        <Trophy size={24} />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleOpenUpdateContest(contest.id);
-                                            }}
-                                            className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteContest(contest.id);
-                                            }}
-                                            className="p-2 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                </div>
+                        <div className="flex flex-col md:flex-row gap-4 mb-8">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search battles..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full bg-[#050505] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-brand-red/50 focus:ring-1 focus:ring-brand-red/50 transition-all placeholder:text-slate-600"
+                                />
+                            </div>
+                        </div>
 
-                                <div className="mb-6 relative z-10">
-                                    <h3 className="text-xl font-bold text-white mb-2 line-clamp-1 font-serif group-hover:text-brand-red transition-colors">{contest.title}</h3>
-                                    <div className="flex flex-col gap-2 text-sm text-slate-400">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={14} className="text-slate-500" />
-                                            <span>{new Date(contest.startTime).toLocaleDateString()}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Clock size={14} className="text-slate-500" />
-                                            <span>{new Date(contest.startTime).toLocaleTimeString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <AnimatePresence>
+                                {filteredContests.map((contest, index) => (
+                                    <motion.div
+                                        key={contest.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        onClick={() => router.push(`/contests/${contest.id}`)}
+                                        className="group bg-[#050505]/80 backdrop-blur-md border border-white/10 hover:border-brand-red/30 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-red/5 relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-red/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-brand-red/10 transition-all" />
 
-                                <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex -space-x-2">
-                                            <div className="w-6 h-6 rounded-full bg-slate-800 border border-black flex items-center justify-center text-[10px]">
-                                                <Target size={12} />
+                                        <div className="flex justify-between items-start mb-6 relative z-10">
+                                            <div className="w-12 h-12 rounded-xl bg-brand-red/10 border border-brand-red/20 flex items-center justify-center text-brand-red group-hover:scale-110 transition-transform duration-500">
+                                                <Trophy size={24} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenUpdateContest(contest.id);
+                                                    }}
+                                                    className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteContest(contest.id);
+                                                    }}
+                                                    className="p-2 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </div>
-                                        <span className="text-xs text-slate-500 font-mono">
-                                            {contest._count?.questions || 0} QUESTIONS
-                                        </span>
-                                    </div>
-                                    <span className={`text-xs px-2 py-1 rounded border ${contest.isOpenAll ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500'}`}>
-                                        {contest.isOpenAll ? 'PUBLIC' : 'RESTRICTED'}
-                                    </span>
 
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
+                                        <div className="mb-6 relative z-10">
+                                            <h3 className="text-xl font-bold text-white mb-2 line-clamp-1 font-serif group-hover:text-brand-red transition-colors">{contest.title}</h3>
+                                            <div className="flex flex-col gap-2 text-sm text-slate-400">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={14} className="text-slate-500" />
+                                                    <span>{new Date(contest.startTime).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Clock size={14} className="text-slate-500" />
+                                                    <span>{new Date(contest.startTime).toLocaleTimeString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                {filteredContests.length === 0 && (
-                    <div className="text-center py-20 opacity-50">
-                        <Trophy size={48} className="mx-auto mb-4 text-slate-600" />
-                        <h3 className="text-xl font-bold text-slate-400">No Battles Found</h3>
-                        <p className="text-slate-600">Start a new protocol to begin.</p>
-                    </div>
+                                        <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex -space-x-2">
+                                                    <div className="w-6 h-6 rounded-full bg-slate-800 border border-black flex items-center justify-center text-[10px]">
+                                                        <Target size={12} />
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-slate-500 font-mono">
+                                                    {contest._count?.questions || 0} QUESTIONS
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 rounded text-[10px] font-bold border ${contest.status === 'LIVE' ? 'bg-green-500/20 border-green-500/50 text-green-500' :
+                                                    contest.status === 'PUBLISHED' ? 'bg-blue-500/20 border-blue-500/50 text-blue-500' :
+                                                        contest.status === 'ENDED' ? 'bg-red-500/20 border-red-500/50 text-red-500' :
+                                                            'bg-slate-500/20 border-slate-500/50 text-slate-500'
+                                                    }`}>
+                                                    {contest.status || 'DRAFT'}
+                                                </span>
+                                                <span className={`text-xs px-2 py-1 rounded border ${contest.isOpenAll ? 'bg-purple-500/10 border-purple-500/20 text-purple-500' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500'}`}>
+                                                    {contest.isOpenAll ? 'PUBLIC' : 'RESTRICTED'}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </div>
+
+                        {filteredContests.length === 0 && (
+                            <div className="text-center py-20 opacity-50">
+                                <Trophy size={48} className="mx-auto mb-4 text-slate-600" />
+                                <h3 className="text-xl font-bold text-slate-400">No Battles Found</h3>
+                                <p className="text-slate-600">Start a new protocol to begin.</p>
+                            </div>
+                        )}
+
+                    </>
                 )}
-
             </main>
 
             <AnimatePresence>
@@ -381,6 +422,19 @@ export default function Contests() {
                                     className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all [color-scheme:dark]"
                                     required
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-mono text-slate-500 mb-1 uppercase">Status</label>
+                                <select
+                                    name="status"
+                                    defaultValue={contest.status || 'DRAFT'}
+                                    className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all placeholder:text-slate-700 appearance-none"
+                                >
+                                    {['DRAFT', 'PUBLISHED', 'UNPUBLISHED'].map(s => (
+                                        <option className="bg-[#050505] text-white" key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">

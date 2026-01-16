@@ -1,6 +1,6 @@
 'use client'
 import { create } from 'zustand'
-import { createBatchAPI, createContestAPI, deleteBatchAPI, deleteContestAPI, getAllContestsAPI, getBatchesAPI, getContestByIdAPI, getLiveContestsAPI, getUpcomingContestsAPI, updateBatchAPI, updateContestAPI, createQuestionAPI, updateQuestionAPI, deleteQuestionAPI } from './api'
+import { createBatchAPI, createContestAPI, deleteBatchAPI, deleteContestAPI, getAllContestsAPI, getBatchesAPI, getContestByIdAPI, getLiveContestsAPI, getUpcomingContestsAPI, updateBatchAPI, updateContestAPI, createQuestionAPI, updateQuestionAPI, deleteQuestionAPI, changeContestStatusAPI } from './api'
 
 
 type AuthState = {
@@ -35,6 +35,7 @@ type ContestState = {
     createQuestion: (contestId: string, title: string, description: string, score: number, options: any[], timeLimit: number) => Promise<any>,
     updateQuestion: (questionId: string, title?: string, description?: string, score?: number, options?: any[], timeLimit?: number) => Promise<any>,
     deleteQuestion: (questionId: string) => Promise<any>
+    changeContestStatus: (contestId: string, status: string) => Promise<any>
 }
 import { persist } from 'zustand/middleware'
 
@@ -173,6 +174,16 @@ export const useContestStore = create<ContestState>((set, get) => ({
             if (contest) {
                 set({ contest: { ...contest, questions: contest.questions.filter((q: any) => q.id !== questionId) } })
             }
+        }
+        return res
+    },
+    changeContestStatus: async (contestId, status) => {
+        const res = await changeContestStatusAPI(contestId, status)
+        if (res.success) {
+            set((state) => ({
+                contests: state.contests.map((c) => c.id === contestId ? { ...c, status } : c),
+                contest: state.contest && state.contest.id === contestId ? { ...state.contest, status } : state.contest
+            }))
         }
         return res
     }

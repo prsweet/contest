@@ -206,6 +206,27 @@ export const deleteContestAPI = async (contestId: string) => {
     return response.data
 }
 
+export const changeContestStatusAPI = async (contestId: string, status: string) => {
+    const token = useAuthStore.getState().token
+    const response = await axios.post(
+        `${BASE_URL}/contest/${contestId}/status`,
+        {
+            status
+        },
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "authorization": `Bearer ${token}`
+            },
+        }
+    )
+
+    if (!response.data.success) {
+        throw new Error(response.data.error)
+    }
+    return response.data
+}
+
 export const getContestByIdAPI = async (contestId: string) => {
     const token = useAuthStore.getState().token
     const response = await axios.get(

@@ -181,6 +181,7 @@ export const getContest = async (req: Request, res: Response) => {
                 success: false,
                 error: 'A contest does not  exists with this contestId'
             })
+            return
         }
         res.status(200).json({
             success: true,
@@ -270,6 +271,32 @@ export const getUpcomingContest = async (req: Request, res: Response) => {
 
     } catch (error) {
         console.log('error while creating contest', error)
+        res.status(500).json({
+            success: false,
+            error: error
+        })
+    }
+}
+
+export const changeContestStatus = async (req: Request, res: Response) => {
+    try {
+        const contestId = req.params.id;
+        const { status } = req.body;
+        const contest = await prisma.contest.update({
+            where: {
+                id: contestId
+            },
+            data: {
+                status: status
+            }
+        })
+        res.status(200).json({
+            success: true,
+            data: contest,
+            message: 'Contest status changed successfully'
+        })
+    } catch (error) {
+        console.log('error while changing contest status', error)
         res.status(500).json({
             success: false,
             error: error

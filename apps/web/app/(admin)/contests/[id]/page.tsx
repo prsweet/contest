@@ -40,10 +40,26 @@ export default function ContestDetails() {
         { title: "", isCorrect: false }
     ])
 
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
     useEffect(() => {
-        if (params.id) {
-            getContestById(params.id as string)
+        const fetchContest = async () => {
+            if (params.id) {
+                try {
+                    setIsLoading(true)
+                    await getContestById(params.id as string)
+                    setError(null)
+                } catch (err: any) {
+                    console.error(err)
+                    setError(err.message || "Failed to load contest")
+                    toast.error(err.message || "Failed to load contest")
+                } finally {
+                    setIsLoading(false)
+                }
+            }
         }
+        fetchContest()
     }, [params.id])
 
     const handleOpenCreate = () => {
@@ -106,7 +122,9 @@ export default function ContestDetails() {
     const addOption = () => setOptions([...options, { title: "", isCorrect: false }])
     const removeOption = (index: number) => setOptions(options.filter((_, i) => i !== index))
 
-    if (!contest) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>
+    if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>
+    if (error) return <div className="min-h-screen bg-black flex items-center justify-center text-red-500">Error: {error}</div>
+    if (!contest) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Contest not found</div>
 
     return (
         <div className="min-h-screen bg-black text-slate-100 selection:bg-brand-red/30 relative overflow-hidden">
