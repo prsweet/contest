@@ -303,3 +303,141 @@ export const changeContestStatus = async (req: Request, res: Response) => {
         })
     }
 }
+
+export const getMyContests = async (req: Request, res: Response) => {
+    try {
+        const userId = req.userId
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { batches: true }
+        })
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            })
+        }
+
+        const userBatchIds = user.batches.map(b => b.id)
+
+        const contests = await prisma.contest.findMany({
+            where: {
+                OR: [
+                    { isOpenAll: true },
+                    {
+                        batches: {
+                            some: {
+                                id: { in: userBatchIds }
+                            }
+                        }
+                    }
+                ],
+                status: {
+                    in: ['PUBLISHED', 'LIVE', 'FINISHED']
+                }
+            },
+            include: {
+                _count: {
+                    select: { questions: true }
+                }
+            },
+            orderBy: {
+                startTime: 'asc'
+            }
+        })
+
+        res.status(200).json({
+            success: true,
+            data: contests,
+            message: 'Eligible contests fetched successfully'
+        })
+    } catch (error) {
+        console.log('error while fetching my contests', error)
+        res.status(500).json({
+            success: false,
+            error: error
+        })
+    }
+}
+
+export const joinContest = async (req: Request, res: Response) => {
+    try {
+        const contestId = req.params.id;
+        if (!contestId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Contest ID is required'
+            })
+        }
+        const userId = req.userId
+        const contest = await prisma.contest.findUnique({
+            where: {
+                id: contestId
+            },
+            include: {
+                batches: true
+            }
+        })
+        if (!contest) {
+            return res.status(404).json({
+                success: false,
+                error: 'Contest not found'
+            })
+        }
+        if (contest.status !== 'LIVE') {
+            return res.status(400).json({
+                success: false,
+                error: 'Contest is not live'
+            })
+        }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { batches: true }
+        })
+        if (!user || !user.id) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            })
+        }
+        const userBatchIds = user.batches.map(b => b.id)
+        const isEligible = contest.isOpenAll || userBatchIds.some(id => contest.batches.map(b => b.id).includes(id))
+        if (!isEligible) {
+            return res.status(403).json({
+                success: false,
+                error: 'User is not eligible for this contest'
+            })
+        }
+        const existingParticipation = await prisma.quizParticipant.findFirst({
+            where: {
+                userId: userId,
+                contestId: contestId
+            }
+        })
+        if (existingParticipation) {
+            return res.status(400).json({
+                success: false,
+                error: 'User has already joined this contest'
+            })
+        }
+
+        const participation = await prisma.quizParticipant.create({
+            data: {
+                userId: user.id,
+                contestId: contestId
+            }
+        })
+        res.status(200).json({
+            success: true,
+            data: participation,
+            message: 'Contest joined successfully'
+        })
+    } catch (error) {
+        console.log('error while joining contest', error)
+        res.status(500).json({
+            success: false,
+            error: error
+        })
+    }
+}

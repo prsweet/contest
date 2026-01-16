@@ -2,10 +2,10 @@ import express, { type Request, type Response } from "express"
 const app = express()
 const PORT = 3001
 import { router as AuthRouter } from "./routes/AuthRouter.js"
-import { router as BatchRouter } from "./routes/BatchController.js"
+import { router as BatchRouter } from "./routes/BatchRouter.js"
 import { AdminMiddleware, authMiddleware } from "./middleware/AuthMiddleware.js"
-import { router as ContestRouter } from './routes/ContestController.js'
-import { router as QuestionRouter } from './routes/QuestionController.js'
+import { router as ContestRouter } from './routes/ContestRouter.js'
+import { router as QuestionRouter } from './routes/QuestionRouter.js'
 import { startContestLifeCycle } from "./jobs/ContestLifeCycle.js"
 import cors from 'cors'
 app.use(express.json())
